@@ -9,7 +9,7 @@ SECTIONS {
     }
 
     .rodata : {
-        *(.rodata)   /* Read-only data (string literals) */
+        *(.rodata)   /* Read-only data */
         *(.rodata.*)
     }
 
@@ -18,6 +18,9 @@ SECTIONS {
     }
 
     .bss : {
+        _bss_start = .;
+        *(COMMON)    /* Common symbols */
         *(.bss)      /* Uninitialized data */
+        _bss_end = .;
     }
 }

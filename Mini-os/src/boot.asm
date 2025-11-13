@@ -10,7 +10,7 @@ start:
     mov ss, ax            ; Set stack segment to 0
     mov sp, 0x7C00        ; Set stack pointer just below bootloader
     
-    ; Display boot message
+    ; Disp lay boot message
     mov si, boot_msg
     call print_string
     
@@ -27,12 +27,12 @@ start:
     ; Save VBE mode info for kernel at 0x5000
     call save_vbe_info
     
-    ; Load kernel from disk to 0x10000 (64KB)
+    ; Load kernel from disk to 0x10000 (64KB) - INCREASED SECTORS
     mov ax, 0x1000        ; ES segment for 0x10000
     mov es, ax
     xor bx, bx            ; BX offset 0
     mov ah, 0x02          ; BIOS read sectors function
-    mov al, 50            ; Number of sectors to read
+    mov al, 100           ; INCREASED: Number of sectors to read (was 50)
     mov ch, 0             ; Cylinder 0
     mov cl, 2             ; Sector 2 (after boot sector)
     mov dh, 0             ; Head 0
@@ -100,10 +100,10 @@ init_pm:
     mov ss, ax
     mov esp, 0x90000      ; Set stack pointer to 576KB
     
-    ; Copy kernel from 0x10000 to 0x100000 (1MB)
+    ; Copy kernel from 0x10000 to 0x100000 (1MB) - UPDATED COUNT
     mov esi, 0x10000      ; Source address
     mov edi, 0x100000     ; Destination address
-    mov ecx, 50 * 128     ; 50 sectors * 128 dwords per sector
+    mov ecx, 100 * 128    ; UPDATED: 100 sectors * 128 dwords per sector (was 50)
     cld                   ; Clear direction flag (forward copy)
     rep movsd             ; Copy ECX dwords from ESI to EDI
     
@@ -123,7 +123,7 @@ boot_msg:        db 'Booting...', 0x0D, 0x0A, 0
 vbe_success_msg: db 'VBE mode set', 0x0D, 0x0A, 0
 vbe_error_msg:   db 'VBE failed', 0x0D, 0x0A, 0
 load_msg:        db 'Kernel loaded', 0x0D, 0x0A, 0
-error_msg:       db 'Error!', 0
+error_msg:       db 'Disk Error!', 0
 boot_drive:      db 0
 
 ; === Global Descriptor Table ===

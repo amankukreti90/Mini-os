@@ -28,11 +28,10 @@ typedef struct {
 } __attribute__((packed)) idtr_t;
 
 // Function declarations
-void init_idt(void);
-void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags);
-void idt_load(void);
-void isr_handler(registers_t *regs);
-void irq_handler(registers_t *regs);
-
+void init_idt(void);                                // Initialize Interrupt Descriptor Table
+void idt_set_gate(uint8_t num, uint32_t base, uint16_t sel, uint8_t flags); // Set IDT gate entry
+void idt_load(void);                               // Load IDT register
+void isr_handler(registers_t *regs);               // CPU exception handler (interrupts 0-31)
+void irq_handler(registers_t *regs);               // Hardware interrupt handler (interrupts 32-47)
 
 #endif

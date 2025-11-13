@@ -3,7 +3,7 @@
 static uint16_t* const VGA_BUFFER = (uint16_t*)VGA_MEMORY;
 static uint32_t cursor_x = 0;
 static uint32_t cursor_y = 0;
-static uint8_t current_color = 0x07; // Light grey on black
+static uint8_t current_color = 0x07; 
 
 // Output byte to port
 static inline void outb(uint16_t port, uint8_t val) {
@@ -22,7 +22,6 @@ void vga_clear_screen(uint8_t color) {
     for (int i = 0; i < VGA_BUFFER_SIZE; i++) {
         VGA_BUFFER[i] = blank;
     }
-    
     cursor_x = 0;
     cursor_y = 0;
 }

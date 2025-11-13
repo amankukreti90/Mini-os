@@ -27,9 +27,6 @@
 #define COLOR_YELLOW 14
 #define COLOR_WHITE 15
 
-
-
-
 // Graphics functions
 
 // Initialize VGA 320x200x256 graphics mode

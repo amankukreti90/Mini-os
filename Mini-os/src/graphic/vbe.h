@@ -50,4 +50,6 @@ void vbe_draw_char(int x, int y, char c, uint32_t color, int scale);
 // Draw a string at specified position with scaling
 void vbe_draw_string(int x, int y, const char* str, uint32_t color, int scale);
 
+void vbe_safe_clear_screen(uint32_t color) ;
+
 #endif

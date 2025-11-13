@@ -1,6 +1,7 @@
 #include "vbe.h"
 #include <stdint.h>
-// Simple 8x8 font - basic character patterns
+
+// Simple 8x8 font - contains 95 ASCII characters 
 static const uint8_t simple_font[95][8] = {     // Font data unchanged - all 95 characters
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}, // space
     {0x18, 0x18, 0x18, 0x18, 0x18, 0x00, 0x18, 0x00}, // !
@@ -99,10 +100,10 @@ static const uint8_t simple_font[95][8] = {     // Font data unchanged - all 95 
     {0x31, 0x6B, 0x46, 0x00, 0x00, 0x00, 0x00, 0x00}, // ~
 };
 
-// VBE mode info from bootloader
+// Global VBE mode info pointer (set by bootloader)
 struct vbe_mode_info* vbe_info = (struct vbe_mode_info*)VBE_INFO_ADDR;
 
-// Clear entire screen with color
+// Clear entire screen with specified color
 void vbe_clear_screen(uint32_t color) {
     if (vbe_info->framebuffer == 0) return;
     
@@ -153,26 +154,28 @@ void vbe_put_pixel(int x, int y, uint32_t color) {
 // Convert RGB values to framebuffer color format
 uint32_t vbe_rgb(uint8_t r, uint8_t g, uint8_t b) {
     if (vbe_info->bpp == 16) {
+        // 16-bit RGB: 5-6-5 format
         return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
     } else {
+        // 24/32-bit RGB: standard format
         return (r << 16) | (g << 8) | b;
     }
 }
 
-
-/// Draw scaled character - FIXED VERSION
+// Draw scaled character using 8x8 font
 void vbe_draw_char(int x, int y, char c, uint32_t color, int scale) {
-    if (c < 32 || c > 126) c = '?';
+    if (c < 32 || c > 126) c = '?'; // Replace invalid chars with question mark
     
     int font_index = c - 32;
     
     for (int row = 0; row < 8; row++) {
         uint8_t font_row = simple_font[font_index][row];
+        
         for (int col = 0; col < 8; col++) {
-            // FIX: Check the correct bit (0-7 from left to right)
+            // Check bit from left to right (MSB first)
             if (font_row & (1 << (7 - col))) {
-                int draw_x = x + col * scale;      // FIX: Use col, not (7-col)
-                int draw_y = y + row * scale;      // FIX: Use row directly
+                int draw_x = x + col * scale;
+                int draw_y = y + row * scale;
                 
                 // Draw scaled pixel block
                 for (int sy = 0; sy < scale; sy++) {
@@ -186,13 +189,20 @@ void vbe_draw_char(int x, int y, char c, uint32_t color, int scale) {
 }
 
 void vbe_draw_string(int x, int y, const char* str, uint32_t color, int scale) {
-    int original_x = x;
+    int current_x = x;
+    
     while (*str) {
-        vbe_draw_char(x, y, *str, color, scale);
-        x += 8 * scale;  // Reduced from larger spacing like 24 or 16
+        vbe_draw_char(current_x, y, *str, color, scale);
+        current_x += 8 * scale;
         str++;
     }
 }
 
-// Macro for default scale
-#define vbe_draw_string(x, y, str, color) vbe_draw_string_impl(x, y, str, color, 1)
+void vbe_safe_clear_screen(uint32_t color) {
+    // Clear the entire screen
+    vbe_clear_screen(color);
+    
+    // Add a small delay to ensure the clear operation completes
+    // This prevents race conditions with shell redraw
+    for (volatile int i = 0; i < 100000; i++);
+}

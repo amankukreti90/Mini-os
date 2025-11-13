@@ -2,6 +2,7 @@
 #include "graphic/vbe.h"
 #include "io.h"
 #include "drivers/keyboard.h"
+#include "syscall/syscall.h" 
 
 // IDT with 256 entries and IDT Register
 idt_entry_t idt_entries[256];
@@ -23,7 +24,7 @@ void idt_load(void) {
 
 // Display interrupt debug information on screen
 void debug_interrupt(registers_t *regs, const char* type, int y_offset) {
-
+    // Clear debug area
     for (int y = y_offset; y < y_offset + 40; y++) {
         for (int x = 50; x < 350; x++) {
             vbe_put_pixel(x, y, vbe_rgb(0, 0, 0));
@@ -61,6 +62,16 @@ void isr_handler(registers_t *regs) {
         vbe_draw_string(50, 150, "GP FAULT!", vbe_rgb(255, 0, 0), 3);
     }
 }
+
+// System Call Handler (Interrupt 0x80)
+void syscall_handler(registers_t *regs) {
+    // Call the system call dispatcher
+    syscall_dispatcher(regs);
+}
+
+
+
+
 
 // Initialize Programmable Interrupt Controller
 void init_pic(void) {
@@ -106,6 +117,10 @@ void init_idt(void) {
     idt_set_gate(32, (uint32_t)irq0, 0x08, 0x8E);  // Timer (IRQ0)
     idt_set_gate(33, (uint32_t)irq1, 0x08, 0x8E);  // Keyboard (IRQ1)
     
+    // Set up system call interrupt (0x80 = 128)
+    extern void isr128();
+    idt_set_gate(128, (uint32_t)isr128, 0x08, 0x8E);  
+    
     // Load IDT into CPU
     idt_load();
 
@@ -118,6 +133,8 @@ void init_idt(void) {
 
 // Hardware Interrupt Handler (Interrupts 32-47)
 void irq_handler(registers_t *regs) {
+    (void)regs; // Mark parameter as unused
+
     // Send End of Interrupt to PIC
     outb(0x20, 0x20);
     

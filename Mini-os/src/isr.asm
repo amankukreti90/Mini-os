@@ -55,6 +55,14 @@ ISR_NOERRCODE 29  ; VMM communication exception
 ISR_NOERRCODE 30  ; Security exception
 ISR_NOERRCODE 31  ; Reserved
 
+; System Call Interrupt (0x80 = 128)
+global isr128
+isr128:
+    cli                     ; Disable interrupts
+    push byte 0             ; Push dummy error code
+    push byte 128           ; Push interrupt number (128 = 0x80)
+    jmp isr_common_stub     ; Jump to common handler
+
 ; Macro for Hardware Interrupts (IRQs)
 ; Maps IRQ numbers to interrupt vectors 32-47
 %macro IRQ 2
