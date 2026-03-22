@@ -166,9 +166,21 @@ irq_common_stub:
     
     ; Call C IRQ handler with register state
     call irq_handler
-    
-    ; Clean up stack pointer parameter
+
+    ; If handler returned a different regs pointer in EAX, switch stacks.
+    ; EAX==0 means keep current stack.
+    test eax, eax
+    jz .no_switch
+    mov esp, eax
+.no_switch:
+
+    ; Clean up stack pointer parameter (only needed if we stayed on same stack)
+    ; When switching stacks, the new stack does not include the argument.
+    ; So only pop argument when no switch occurred.
+    cmp eax, 0
+    jne .arg_done
     add esp, 4
+.arg_done:
     
     ; Restore segment registers
     pop gs

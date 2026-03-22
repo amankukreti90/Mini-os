@@ -7,9 +7,48 @@
 // Remove buffer variables, keep only scale
 static int text_scale = 2;
 
+// IRQ-driven scancode ring buffer
+#define KBD_BUF_SIZE 64
+static volatile uint8_t kbd_buf[KBD_BUF_SIZE];
+static volatile uint8_t kbd_head = 0;
+static volatile uint8_t kbd_tail = 0;
+
+static volatile int shell_input_enabled = 0;
+
 // Key state tracking
 bool shift_pressed = false;
 bool ctrl_pressed = false;
+
+static void kbd_buf_push(uint8_t scancode) {
+    uint8_t next = (uint8_t)((kbd_head + 1) % KBD_BUF_SIZE);
+    if (next == kbd_tail) {
+        // Buffer full; drop scancode.
+        return;
+    }
+    kbd_buf[kbd_head] = scancode;
+    kbd_head = next;
+}
+
+int keyboard_scancode_available(void) {
+    return kbd_head != kbd_tail;
+}
+
+uint8_t keyboard_read_scancode(void) {
+    while (!keyboard_scancode_available()) {
+        // spin
+    }
+    uint8_t sc = kbd_buf[kbd_tail];
+    kbd_tail = (uint8_t)((kbd_tail + 1) % KBD_BUF_SIZE);
+    return sc;
+}
+
+void keyboard_flush_scancodes(void) {
+    kbd_tail = kbd_head;
+}
+
+void keyboard_set_shell_input(int enabled) {
+    shell_input_enabled = enabled ? 1 : 0;
+}
 
 // Extended keymap with shift characters
 char scancode_to_ascii(uint8_t scancode, bool shift) {
@@ -70,6 +109,8 @@ void handle_keyboard(void) {
     uint8_t scancode = inb(0x60);
     char key = 0;
 
+    // Always enqueue raw scancode for menu/game consumers.
+    kbd_buf_push(scancode);
 
     // Check for special keys first
     switch(scancode) {
@@ -125,8 +166,10 @@ void handle_keyboard(void) {
                     break;
             }
         } else if (key != 0) {
-            // Send to shell instead of buffer
-            shell_add_char(key);
+            // Forward to shell only when shell input is enabled.
+            if (shell_input_enabled) {
+                shell_add_char(key);
+            }
         }
     }
 }
@@ -136,6 +179,9 @@ void init_keyboard(void) {
     shift_pressed = false;
     ctrl_pressed = false;
     text_scale = 2;
+    kbd_head = 0;
+    kbd_tail = 0;
+    shell_input_enabled = 0;
 
 }
 
@@ -146,5 +192,5 @@ int get_text_scale(void) {
 
 // ADD THIS FUNCTION TO src/drivers/keyboard.c (at the end of the file)
 uint8_t keyboard_get_scancode(void) {
-    return inb(0x60);
+    return keyboard_read_scancode();
 }

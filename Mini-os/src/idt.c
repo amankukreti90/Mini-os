@@ -3,6 +3,8 @@
 #include "io.h"
 #include "drivers/keyboard.h"
 #include "syscall/syscall.h" 
+#include "drivers/pit.h"
+#include "sched/sched.h"
 
 // IDT with 256 entries and IDT Register
 idt_entry_t idt_entries[256];
@@ -60,6 +62,8 @@ void isr_handler(registers_t *regs) {
     // Handle specific CPU exceptions
     if (regs->int_no == 13) {  // General Protection Fault
         vbe_draw_string(50, 150, "GP FAULT!", vbe_rgb(255, 0, 0), 3);
+    } else if (regs->int_no == 14) { // Page Fault
+        vbe_draw_string(50, 150, "PAGE FAULT!", vbe_rgb(255, 0, 0), 3);
     }
 }
 
@@ -88,8 +92,8 @@ void init_pic(void) {
     outb(0x21, 0x01);  // ICW4: 8086 mode
     outb(0xA1, 0x01);
     
-    // Mask all interrupts except keyboard (IRQ1)
-    outb(0x21, 0xFD);  // 11111101 - enable only IRQ1 (keyboard)
+    // Mask all interrupts except timer (IRQ0) and keyboard (IRQ1)
+    outb(0x21, 0xFC);  // 11111100 - enable IRQ0 and IRQ1
     outb(0xA1, 0xFF);  // 11111111 - disable all slave PIC interrupts
 }
 
@@ -132,12 +136,30 @@ void init_idt(void) {
 }
 
 // Hardware Interrupt Handler (Interrupts 32-47)
-void irq_handler(registers_t *regs) {
-    (void)regs; // Mark parameter as unused
-
-    // Send End of Interrupt to PIC
+registers_t* irq_handler(registers_t *regs) {
+    registers_t* original_regs = regs;
+    // Send EOI to PIC(s). Slave PIC (vectors 40-47) must be acknowledged first.
+    if (regs->int_no >= 40 && regs->int_no <= 47) {
+        outb(0xA0, 0x20);
+    }
     outb(0x20, 0x20);
-    
-    // Handle keyboard interrupts
-    handle_keyboard();
+
+    // Dispatch hardware IRQs by vector.
+    switch (regs->int_no) {
+        case 32: // IRQ0 - PIT timer
+            pit_on_tick();
+            regs = sched_on_tick(regs);
+            break;
+        case 33: // IRQ1 - keyboard
+            handle_keyboard();
+            break;
+        default:
+            break;
+    }
+
+    // Return 0 to indicate "no stack switch"; otherwise return a new regs pointer.
+    if (regs == original_regs) {
+        return 0;
+    }
+    return regs;
 }

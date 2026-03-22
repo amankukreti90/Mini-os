@@ -1,7 +1,6 @@
 #include "boot_menu.h"
 #include "graphic/vbe.h"
 #include "drivers/keyboard.h"
-#include "io.h"
 #include "shell/shell.h"
 #include "snake/snake.h"
 
@@ -12,19 +11,12 @@ static int string_length(const char* str) {
     return len;
 }
 
-// Get keypress without interrupts and clear keyboard buffer
+// Get keypress via IRQ-driven scancode queue
 static uint8_t get_keypress(void) {
     uint8_t scancode;
     do {
-        scancode = inb(0x60);
-        // Wait for key press (scancode without 0x80 bit)
-    } while (scancode & 0x80 || scancode == 0);
-    
-    // Clear any pending keyboard buffer to prevent characters appearing
-    while (inb(0x64) & 0x01) {
-        inb(0x60); // Read and discard any pending scancodes
-    }
-    
+        scancode = keyboard_read_scancode();
+    } while ((scancode & 0x80) || scancode == 0);
     return scancode;
 }
 
@@ -332,15 +324,9 @@ void draw_snake_option(int y_position, int is_selected) {
 void show_boot_menu(void) {
     int selected_option = 0; // 0 = shell, 1 = snake
     int menu_active = 1;
-    
-    // TEMPORARILY DISABLE KEYBOARD INTERRUPTS FOR SHELL
-    // This prevents the shell's keyboard handler from processing menu keys
-    asm volatile ("cli"); // Disable interrupts
-    
-    // Clear any pending keyboard buffer
-    while (inb(0x64) & 0x01) {
-        inb(0x60); // Read and discard any pending scancodes
-    }
+
+    keyboard_set_shell_input(0);
+    keyboard_flush_scancodes();
     
     // Draw static elements only once
     draw_menu_background();
@@ -375,19 +361,12 @@ void show_boot_menu(void) {
                 
             case 0x1C: // ENTER key - confirm selection
                 menu_active = 0;
-                // RE-ENABLE INTERRUPTS before launching applications
-                asm volatile ("sti");
                 if (selected_option == 0) {
                     run_shell_from_menu();
                 } else {
                     run_snake_from_menu();
                 }
-                // When returning, disable interrupts again and redraw
-                asm volatile ("cli");
-                // Clear any pending keyboard buffer
-                while (inb(0x64) & 0x01) {
-                    inb(0x60);
-                }
+                keyboard_flush_scancodes();
                 draw_menu_background();
                 draw_static_elements();
                 draw_shell_option(180, selected_option == 0);
@@ -396,15 +375,8 @@ void show_boot_menu(void) {
                 
             case 0x01: // ESC key - go to shell by default
                 menu_active = 0;
-                // RE-ENABLE INTERRUPTS before launching applications
-                asm volatile ("sti");
                 run_shell_from_menu();
-                // When returning, disable interrupts again and redraw
-                asm volatile ("cli");
-                // Clear any pending keyboard buffer
-                while (inb(0x64) & 0x01) {
-                    inb(0x60);
-                }
+                keyboard_flush_scancodes();
                 draw_menu_background();
                 draw_static_elements();
                 draw_shell_option(180, 1);
@@ -412,9 +384,6 @@ void show_boot_menu(void) {
                 break;
         }
     }
-    
-    // RE-ENABLE INTERRUPTS when leaving menu
-    asm volatile ("sti");
 }
 
 // Launch shell from menu

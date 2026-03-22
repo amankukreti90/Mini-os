@@ -155,6 +155,9 @@ void shell_init(void) {
     
     shell_clear_screen();
     shell_draw_prompt();
+
+    keyboard_flush_scancodes();
+    keyboard_set_shell_input(1);
     
     int prompt_length = shell_strlen("mini@miniOS:~$ ");
     output_cursor_x = 5 + (prompt_length * CHAR_WIDTH * 2);

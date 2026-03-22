@@ -23,24 +23,19 @@ static int string_length(const char* str) {
     return len;
 }
 
-// Get keypress without interrupts
+// Get keypress via IRQ-driven scancode queue
 static uint8_t get_keypress(void) {
     uint8_t scancode;
     do {
-        scancode = inb(0x60);
+        scancode = keyboard_read_scancode();
     } while (scancode & 0x80 || scancode == 0);
     return scancode;
 }
 
 // Show snake game menu (before game starts)
 void show_snake_start_menu(void) {
-    // DISABLE INTERRUPTS to prevent shell from processing keys
-    asm volatile ("cli");
-    
-    // Clear any pending keyboard buffer
-    while (inb(0x64) & 0x01) {
-        inb(0x60);
-    }
+    keyboard_set_shell_input(0);
+    keyboard_flush_scancodes();
     
     vbe_clear_screen(vbe_rgb(0, 0, 0));
     
@@ -80,11 +75,7 @@ void show_snake_start_menu(void) {
     // Wait for specific key press (P or Q only)
     while (1) {
         uint8_t scancode = get_keypress();
-        
-        // Clear keyboard buffer
-        while (inb(0x64) & 0x01) {
-            inb(0x60);
-        }
+        keyboard_flush_scancodes();
         
         if (scancode == 0x10) { // Q key - quit
             game_running = 0;
@@ -95,9 +86,6 @@ void show_snake_start_menu(void) {
         }
         // Ignore all other keys
     }
-    
-    // RE-ENABLE INTERRUPTS before returning
-    asm volatile ("sti");
 }
 
 // Show game over screen with final score
@@ -346,7 +334,10 @@ void draw_game_initial(Snake *snake, Point *food) {
 
 // Handle keyboard input for snake movement
 int handle_snake_input(void) {
-    uint8_t scancode = inb(0x60);
+    if (!keyboard_scancode_available()) {
+        return 1;
+    }
+    uint8_t scancode = keyboard_read_scancode();
     
     // REMOVED: No quit during gameplay
     // Only handle arrow keys
@@ -437,7 +428,7 @@ void snake_game(void) {
     // Main game loop
     while (game_running) {
         // Handle input every frame
-        game_running = handle_snake_input();
+        handle_snake_input();
         
         // Update game state at controlled speed
         if (frame_count % game_speed == 0) {

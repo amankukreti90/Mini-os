@@ -16,6 +16,14 @@ void decrease_text_scale(void);
 void set_text_scale(int scale);
 int get_text_scale(void);
 
+// Scancode queue helpers (IRQ-driven)
+int keyboard_scancode_available(void);
+uint8_t keyboard_read_scancode(void);   // blocks/spins until a scancode is available
+void keyboard_flush_scancodes(void);
+
+// Control whether keyboard IRQ forwards ASCII to the shell.
+void keyboard_set_shell_input(int enabled);
+
 // External shell function
 extern void shell_add_char(char c);
 

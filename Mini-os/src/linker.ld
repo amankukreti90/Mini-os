@@ -3,6 +3,7 @@ OUTPUT_FORMAT(elf32-i386)
 
 SECTIONS {
     . = 0x100000;    /* Kernel loaded at 1MB */
+    _kernel_start = .;
 
     .text : {
         *(.text)     /* Code section */
@@ -23,4 +24,6 @@ SECTIONS {
         *(.bss)      /* Uninitialized data */
         _bss_end = .;
     }
+
+    _kernel_end = .;
 }

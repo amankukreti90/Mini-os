@@ -49,6 +49,8 @@ FILESYSTEM_C    = $(SRC_DIR)/fs/filesystem.c
 FILESYSTEM_H    = $(SRC_DIR)/fs/filesystem.h
 RTC_C           = $(SRC_DIR)/drivers/rtc.c
 RTC_H           = $(SRC_DIR)/drivers/rtc.h
+PIT_C           = $(SRC_DIR)/drivers/pit.c
+PIT_H           = $(SRC_DIR)/drivers/pit.h
 
 # Boot Menu files
 BOOT_MENU_C     = $(SRC_DIR)/boot_menu.c
@@ -57,6 +59,18 @@ BOOT_MENU_H     = $(SRC_DIR)/boot_menu.h
 # Game files
 SNAKE_C         = $(SRC_DIR)/snake/snake.c
 SNAKE_H         = $(SRC_DIR)/snake/snake.h
+
+# Memory management files
+PMM_C           = $(SRC_DIR)/mem/pmm.c
+PMM_H           = $(SRC_DIR)/mem/pmm.h
+PAGING_C        = $(SRC_DIR)/mem/paging.c
+PAGING_H        = $(SRC_DIR)/mem/paging.h
+KHEAP_C         = $(SRC_DIR)/mem/kheap.c
+KHEAP_H         = $(SRC_DIR)/mem/kheap.h
+
+# Scheduling files
+SCHED_C         = $(SRC_DIR)/sched/sched.c
+SCHED_H         = $(SRC_DIR)/sched/sched.h
 
 # Object files
 BOOT_BIN        = $(BIN_DIR)/boot.bin
@@ -77,12 +91,21 @@ SHELL_C_O       = $(BIN_DIR)/shell.o
 COMMANDS_C_O    = $(BIN_DIR)/commands.o
 FILESYSTEM_C_O  = $(BIN_DIR)/filesystem.o
 RTC_C_O         = $(BIN_DIR)/rtc.o
+PIT_C_O         = $(BIN_DIR)/pit.o
 
 # Boot Menu object files
 BOOT_MENU_C_O   = $(BIN_DIR)/boot_menu.o
 
 # Game object files
 SNAKE_C_O       = $(BIN_DIR)/snake.o
+
+# Scheduling object files
+SCHED_C_O       = $(BIN_DIR)/sched.o
+
+# Memory management object files
+PMM_C_O         = $(BIN_DIR)/pmm.o
+PAGING_C_O      = $(BIN_DIR)/paging.o
+KHEAP_C_O       = $(BIN_DIR)/kheap.o
 
 KERNEL_ELF      = $(BIN_DIR)/kernel.elf
 KERNEL_BIN      = $(BIN_DIR)/kernel.bin
@@ -106,7 +129,7 @@ $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 
 # Link all kernel object files into ELF executable
-$(KERNEL_ELF): $(KERNEL_ASM_O) $(KERNEL_C_O) $(VGA_C_O) $(GRAPHICS_C_O) $(VBE_C_O) $(IDT_C_O) $(ISR_ASM_O) $(KEYBOARD_C_O) $(MOUSE_C_O) $(IO_C_O) $(SYSCALL_C_O) $(SHELL_C_O) $(COMMANDS_C_O) $(FILESYSTEM_C_O) $(RTC_C_O) $(BOOT_MENU_C_O) $(SNAKE_C_O) | $(BIN_DIR)
+$(KERNEL_ELF): $(KERNEL_ASM_O) $(KERNEL_C_O) $(VGA_C_O) $(GRAPHICS_C_O) $(VBE_C_O) $(IDT_C_O) $(ISR_ASM_O) $(KEYBOARD_C_O) $(MOUSE_C_O) $(IO_C_O) $(SYSCALL_C_O) $(SHELL_C_O) $(COMMANDS_C_O) $(FILESYSTEM_C_O) $(RTC_C_O) $(PIT_C_O) $(SCHED_C_O) $(PMM_C_O) $(PAGING_C_O) $(KHEAP_C_O) $(BOOT_MENU_C_O) $(SNAKE_C_O) | $(BIN_DIR)
 	$(LD) $(LD_FLAGS) -o $@ $^
 
 # Compile C sources in dependency order
@@ -120,6 +143,21 @@ $(IO_C_O): $(IO_C) $(IO_H) | $(BIN_DIR)
 
 # Then compile RTC driver (needs IO)
 $(RTC_C_O): $(RTC_C) $(RTC_H) $(IO_H) | $(BIN_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
+$(PIT_C_O): $(PIT_C) $(PIT_H) $(IO_H) | $(BIN_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
+$(SCHED_C_O): $(SCHED_C) $(SCHED_H) $(IDT_H) | $(BIN_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
+$(PMM_C_O): $(PMM_C) $(PMM_H) | $(BIN_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
+$(PAGING_C_O): $(PAGING_C) $(PAGING_H) $(PMM_H) $(VBE_H) | $(BIN_DIR)
+	$(CC) $(C_FLAGS) $< -o $@
+
+$(KHEAP_C_O): $(KHEAP_C) $(KHEAP_H) $(PMM_H) $(PAGING_H) | $(BIN_DIR)
 	$(CC) $(C_FLAGS) $< -o $@
 
 # Then compile graphics components

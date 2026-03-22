@@ -2,6 +2,7 @@
 #include "../graphic/vbe.h"
 #include "../fs/filesystem.h"
 #include "../drivers/rtc.h"
+#include "../drivers/keyboard.h"
 #include "shell.h"
 
 // Global command variables
@@ -224,5 +225,6 @@ void cmd_exit(void) {
     for (volatile int i = 0; i < 1000000; i++);
     
     // Set exit flag
+    keyboard_set_shell_input(0);
     should_exit = 1;
 }
